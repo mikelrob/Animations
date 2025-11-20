@@ -1,0 +1,61 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Documentation
+        run: |
+          xcodebuild docbuild -scheme Animations \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ./DerivedData
+      
+      - name: Process Documentation Archive
+        run: |
+          # Find the generated .doccarchive
+          DOCC_ARCHIVE=$(find ./DerivedData -name "*.doccarchive" | head -n 1)
+          
+          if [ -z "$DOCC_ARCHIVE" ]; then
+            echo "Error: No .doccarchive found"
+            exit 1
+          fi
+          
+          echo "Found documentation archive: $DOCC_ARCHIVE"
+          
+          # Convert to static HTML
+          xcrun docc process-archive transform-for-static-hosting \
+            "$DOCC_ARCHIVE" \
+            --output-path ./docs \
+            --hosting-base-path Animations
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
