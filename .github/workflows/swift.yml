@@ -18,12 +18,12 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-      uses: sersoft-gmbh/xcodebuild-action@v4
+    - uses: sersoft-gmbh/xcodebuild-action@v4
       with:
         spm-package: './'
         scheme: Animations
         destination: platform=iOS
-      uses: sersoft-gmbh/xcodebuild-action@v4
+    - uses: sersoft-gmbh/xcodebuild-action@v4
       with:
         spm-package: './'
         scheme: Animations
