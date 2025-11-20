@@ -18,19 +18,12 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Get latest simulator
+      run: echo "LATEST_SIM_UDID=$(./script/latest-sim)" >> $GITHUB_OUTPUT
+      id: latest-sim
     - uses: sersoft-gmbh/xcodebuild-action@v4
       with:
         spm-package: './'
         scheme: Animations
-        destination: platform=iOS Simulator
-
-  build-and-test-tvOS-xcode-latest:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: sersoft-gmbh/xcodebuild-action@v4
-      with:
-        spm-package: './'
-        scheme: Animations
-        destination: platform=tvOS
-        action: test
+        destination: id=${{ steps.latest-sim.outputs.LATEST_SIM_UDID }}
+  

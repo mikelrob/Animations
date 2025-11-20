@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Find and output the UDID of an iOS simulator with the latest version of iOS installed.
+# Works with the plain-text output of `xcrun simctl list devices`.
+
+# Get all iOS runtime versions (lines like: "-- iOS 18.2 --")
+versions=$(
+  xcrun simctl list devices 2>/dev/null \
+  | awk '/^-- iOS[[:space:]]+/ {
+      # remove leading "-- iOS " and trailing " --"
+      line=$0
+      sub(/^-- iOS[[:space:]]*/, "", line)
+      sub(/[[:space:]]*--[[:space:]]*$/, "", line)
+      print line
+    }' \
+  | sort -V -u
+)
+
+if [ -z "$versions" ]; then
+  echo "Error: No iOS runtimes found." >&2
+  exit 1
+fi
+
+# Get the latest version
+latest_version=$(printf "%s\n" "$versions" | tail -n 1)
+
+# Extract the first device UDID for the latest runtime
+udid=$(
+  xcrun simctl list devices 2>/dev/null \
+  | awk -v ver="$latest_version" '
+      BEGIN {in_block=0}
+      # Check if we are entering the target iOS runtime block
+      /^--[[:space:]]+/ {
+        in_block = 0
+        header = $0
+        if (header ~ "^--[[:space:]]*iOS[[:space:]]+" ver) {
+          in_block = 1
+        }
+        next
+      }
+      # If inside the target block, print device lines
+      in_block && /\(/ {
+        print $0
+      }
+    ' \
+  | head -n 1 \
+  | grep -oE '\([0-9A-Fa-f\-]{36}\)|\([0-9A-Fa-f\-]{8,}\)' \
+  | tr -d '()'
+)
+
+if [ -z "$udid" ]; then
+  echo "Error: No simulator found for iOS $latest_version." >&2
+  exit 2
+fi
+
+# Output the UDID
+echo "$udid"
